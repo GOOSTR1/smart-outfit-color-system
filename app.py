@@ -14,6 +14,7 @@ from recommender import (
     SEASON_OPTIONS, STYLE_OPTIONS,
 )
 from body_engine import body_advice, body_summary, BODY_SHAPES, SHAPE_NAME
+from avatar import render_avatar
 
 st.set_page_config(page_title='智能穿搭色彩系统', page_icon='🎨', layout='wide')
 
@@ -226,7 +227,11 @@ def page_profile():
         index=BODY_SHAPES.index(profile.get('body_shape', 'H型')),
         format_func=lambda s: SHAPE_NAME[s][LANG])
     st.caption(_t('p_shape_hint'))
-    st.info(body_summary({'height': height, 'weight': weight, 'body_shape': body_shape}, LANG))
+    col_av, col_sum = st.columns([1, 2])
+    live = {'height': height, 'weight': weight, 'body_shape': body_shape,
+            'hair': profile.get('hair', '深')}
+    col_av.markdown(render_avatar(live, [], 160, 344), unsafe_allow_html=True)
+    col_sum.info(body_summary(live, LANG))
 
     if st.button(_t('p_save'), type='primary'):
         profile['skin'] = skin
@@ -293,11 +298,14 @@ def page_recommend():
 
     for i, r in enumerate(results, 1):
         with st.container(border=True):
-            h1, h2 = st.columns([0.9, 4])
-            h1.markdown(f'#### {_t("r_item_prefix").format(i=i)}')
-            h1.markdown(score_badge(r['score']), unsafe_allow_html=True)
-            h1.caption(_t('r_score'))
-            with h2:
+            col_av, col_main = st.columns([1, 3.4])
+            with col_av:
+                st.markdown(render_avatar(profile, r['items'], 150, 322),
+                            unsafe_allow_html=True)
+                st.markdown(score_badge(r['score']), unsafe_allow_html=True)
+                st.caption(_t('r_score'))
+            with col_main:
+                st.markdown(f'#### {_t("r_item_prefix").format(i=i)}')
                 st.markdown(color_bar(r['palette']), unsafe_allow_html=True)
                 st.markdown(''.join(item_card(it) for it in r['items']),
                             unsafe_allow_html=True)
