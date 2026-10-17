@@ -18,6 +18,12 @@ SHAPE_W = {
     '倒三角型': {'shoulder': 49, 'bust': 42, 'waist': 36, 'hip': 37},
 }
 
+# 性别对肩/胸/腰/臀的比例调整（女性为基准 1.0）
+GENDER_ADJUST = {
+    '男': {'shoulder': 1.24, 'bust': 1.05, 'waist': 1.16, 'hip': 0.90},
+    '女': {'shoulder': 1.0, 'bust': 1.0, 'waist': 1.0, 'hip': 1.0},
+}
+
 # 身高体重 → 连续缩放（BMI 16→0.82，21→1.0，33→1.42；身高越高腿越长）
 def _bmi_scale(bmi):
     if bmi is None:
@@ -51,11 +57,12 @@ def _widths(profile):
     shape = profile.get('body_shape', 'H型')
     s = _bmi_scale(calc_bmi(h, w))
     sh = SHAPE_W.get(shape, SHAPE_W['H型'])
+    g = GENDER_ADJUST.get(profile.get('gender', '女'), GENDER_ADJUST['女'])
     return {
-        'shoulder': sh['shoulder'] * s,
-        'bust': sh['bust'] * s,
-        'waist': sh['waist'] * s,
-        'hip': sh['hip'] * s,
+        'shoulder': sh['shoulder'] * s * g['shoulder'],
+        'bust': sh['bust'] * s * g['bust'],
+        'waist': sh['waist'] * s * g['waist'],
+        'hip': sh['hip'] * s * g['hip'],
         'ankle': ankle,
     }
 
@@ -90,6 +97,7 @@ def _image(uri, x, y, w, h, clip_id):
 def render_avatar(profile, items, width=180, height=387):
     """生成一张穿衣人体模型 SVG。items 为含 category/hex/image 的单品列表。"""
     hair = HAIR.get(profile.get('hair', '深'), HAIR['深'])
+    gender = profile.get('gender', '女')
     wd = _widths(profile)
     sl, bst, wst, hp = wd['shoulder'], wd['bust'], wd['waist'], wd['hip']
     ankle = wd['ankle']
@@ -137,6 +145,9 @@ def render_avatar(profile, items, width=180, height=387):
     p.append(f'<rect x="92" y="58" width="16" height="30" fill="{SKIN}"/>')
     p.append(f'<circle cx="100" cy="42" r="27" fill="{SKIN}"/>')
     p.append(f'<path d="M 71 42 A 29 29 0 0 1 129 42 Z" fill="{hair}"/>')
+    if gender == '女':
+        p.append(f'<rect x="63" y="38" width="12" height="66" rx="6" fill="{hair}"/>')
+        p.append(f'<rect x="125" y="38" width="12" height="66" rx="6" fill="{hair}"/>')
 
     # 手臂（袖子）
     p.append(f'<rect x="{100-sl-12}" y="88" width="15" height="117" rx="7" fill="{sleeve}"/>')

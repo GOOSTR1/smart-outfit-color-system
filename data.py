@@ -36,6 +36,7 @@ DEFAULT_WARDROBE = [
 ]
 
 DEFAULT_PROFILE = {
+    'gender': '女',
     'skin': '冷',
     'hair': '深',
     'style': '极简',

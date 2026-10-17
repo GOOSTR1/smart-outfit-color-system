@@ -211,6 +211,12 @@ def page_profile():
     data = st.session_state.data
     profile = data['profile']
 
+    st.markdown('#### ' + _t('p_gender'))
+    gender = st.radio(
+        _t('p_gender'), ['男', '女'],
+        index=0 if profile.get('gender', '女') == '男' else 1,
+        format_func=lambda v: (_t('p_gender_male') if v == '男' else _t('p_gender_female')))
+
     st.markdown('#### ' + _t('p_skin'))
     skin = st.radio(
         _t('p_skin'), ['冷', '暖'],
@@ -255,13 +261,14 @@ def page_profile():
     st.caption(_t('p_measure_hint'))
 
     col_av, col_sum = st.columns([1, 2])
-    live = {'height': height, 'weight': weight, 'body_shape': body_shape,
-            'hair': profile.get('hair', '深'),
+    live = {'gender': gender, 'height': height, 'weight': weight,
+            'body_shape': body_shape, 'hair': profile.get('hair', '深'),
             'bust_cm': bust, 'waist_cm': waist_cm, 'hip_cm': hip_cm}
     col_av.markdown(render_avatar(live, [], 160, 344), unsafe_allow_html=True)
     col_sum.info(body_summary(live, LANG))
 
     if st.button(_t('p_save'), type='primary'):
+        profile['gender'] = gender
         profile['skin'] = skin
         profile['hair'] = hair
         profile['style'] = style
