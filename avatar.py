@@ -82,28 +82,55 @@ def _jacket_paths(w, color):
             f'<path d="{right}" fill="{color}"/>')
 
 
+def _image(uri, x, y, w, h, clip_id):
+    return (f'<image href="{uri}" x="{x}" y="{y}" width="{w}" height="{h}" '
+            f'preserveAspectRatio="xMidYMid slice" clip-path="url(#{clip_id})"/>')
+
+
 def render_avatar(profile, items, width=180, height=387):
-    """生成一张穿衣人体模型 SVG。items 为含 category/hex 的单品列表。"""
+    """生成一张穿衣人体模型 SVG。items 为含 category/hex/image 的单品列表。"""
     hair = HAIR.get(profile.get('hair', '深'), HAIR['深'])
     wd = _widths(profile)
     sl, bst, wst, hp = wd['shoulder'], wd['bust'], wd['waist'], wd['hip']
     ankle = wd['ankle']
 
-    # 解析服装颜色（未指定时用中性默认）
-    cols = {'上衣': '#C9CDD1', '裙装': None, '下装': '#5A6B7A',
-            '外套': None, '鞋': '#3A3A3A', '配饰': None}
+    # 解析服装颜色与贴图
+    cols = {'上衣': None, '裙装': None, '下装': None,
+            '外套': None, '鞋': None, '配饰': None}
+    imgs = {'上衣': None, '裙装': None, '下装': None}
     for it in items:
         cat = it.get('category')
         if cat in cols and cols[cat] is None:
             cols[cat] = it.get('hex')
+        if cat in imgs and imgs[cat] is None and it.get('image'):
+            imgs[cat] = it['image']
 
-    top = cols['上衣']
+    top = cols['上衣'] or '#C9CDD1'
     outer = cols['外套']
-    shoes = cols['鞋']
+    shoes = cols['鞋'] or '#3A3A3A'
     accent = cols['配饰']
     sleeve = outer if outer else top
     is_skirt = cols['裙装'] is not None
-    bottom = cols['裙装'] if is_skirt else cols['下装']
+    bottom = (cols['裙装'] if is_skirt else cols['下装']) or '#5A6B7A'
+
+    # 几何量与裁剪路径
+    torso_path = _torso_path(wd)
+    hem = max(hp, wst) * 1.55
+    hem_y = ankle - 92
+    leg_w = hp * 0.52
+
+    defs = []
+    if imgs['上衣']:
+        defs.append(f'<clipPath id="clipTop"><path d="{torso_path}"/></clipPath>')
+    if is_skirt:
+        skirt_path = (f'M {100-wst} 170 L {100-hem} {hem_y} L {100+hem} {hem_y} L {100+wst} 170 Z')
+        if imgs['裙装']:
+            defs.append(f'<clipPath id="clipBottom"><path d="{skirt_path}"/></clipPath>')
+    else:
+        if imgs['下装']:
+            defs.append(f'<clipPath id="clipBottom">'
+                        f'<rect x="{100-leg_w-5}" y="232" width="{leg_w}" height="{ankle-240}" rx="11"/>'
+                        f'<rect x="{100+5}" y="232" width="{leg_w}" height="{ankle-240}" rx="11"/></clipPath>')
 
     p = []
     # 脖子、头、头发
@@ -111,32 +138,39 @@ def render_avatar(profile, items, width=180, height=387):
     p.append(f'<circle cx="100" cy="42" r="27" fill="{SKIN}"/>')
     p.append(f'<path d="M 71 42 A 29 29 0 0 1 129 42 Z" fill="{hair}"/>')
 
-    # 手臂（袖子）+ 手
+    # 手臂（袖子）
     p.append(f'<rect x="{100-sl-12}" y="88" width="15" height="117" rx="7" fill="{sleeve}"/>')
     p.append(f'<rect x="{100+sl-3}" y="88" width="15" height="117" rx="7" fill="{sleeve}"/>')
+
+    # 躯干（上装）：贴图 or 纯色
+    if imgs['上衣']:
+        p.append(_image(imgs['上衣'], 100 - sl, 84, 2 * sl, 150, 'clipTop'))
+    else:
+        p.append(f'<path d="{torso_path}" fill="{top}"/>')
+
+    # 手
     p.append(f'<circle cx="{100-sl-4.5}" cy="209" r="6" fill="{SKIN}"/>')
     p.append(f'<circle cx="{100+sl+4.5}" cy="209" r="6" fill="{SKIN}"/>')
 
-    # 躯干（上装）
-    p.append(f'<path d="{_torso_path(wd)}" fill="{top}"/>')
-
-    # 外套（开襟）
+    # 外套（开襟，纯色）
     if outer:
         p.append(_jacket_paths(wd, outer))
 
-    # 下半身：裙装 / 裤装
+    # 下半身：裙装 / 裤装（贴图 or 纯色）
     if is_skirt:
-        hem = max(hp, wst) * 1.55
-        hem_y = ankle - 92
-        p.append(f'<path d="M {100-wst} 170 L {100-hem} {hem_y} L {100+hem} {hem_y} '
-                 f'L {100+wst} 170 Z" fill="{bottom}"/>')
-        leg_w = hp * 0.5 - 6
-        p.append(f'<rect x="{100-hp*0.5}" y="{hem_y}" width="{leg_w}" height="{ankle-hem_y-8}" rx="9" fill="{SKIN}"/>')
-        p.append(f'<rect x="{100+6}" y="{hem_y}" width="{leg_w}" height="{ankle-hem_y-8}" rx="9" fill="{SKIN}"/>')
+        if imgs['裙装']:
+            p.append(_image(imgs['裙装'], 100 - hem, 170, 2 * hem, hem_y - 170, 'clipBottom'))
+        else:
+            p.append(f'<path d="M {100-wst} 170 L {100-hem} {hem_y} L {100+hem} {hem_y} L {100+wst} 170 Z" fill="{bottom}"/>')
+        leg_w2 = hp * 0.5 - 6
+        p.append(f'<rect x="{100-hp*0.5}" y="{hem_y}" width="{leg_w2}" height="{ankle-hem_y-8}" rx="9" fill="{SKIN}"/>')
+        p.append(f'<rect x="{100+6}" y="{hem_y}" width="{leg_w2}" height="{ankle-hem_y-8}" rx="9" fill="{SKIN}"/>')
     else:
-        leg_w = hp * 0.52
-        p.append(f'<rect x="{100-leg_w-5}" y="232" width="{leg_w}" height="{ankle-240}" rx="11" fill="{bottom}"/>')
-        p.append(f'<rect x="{100+5}" y="232" width="{leg_w}" height="{ankle-240}" rx="11" fill="{bottom}"/>')
+        if imgs['下装']:
+            p.append(_image(imgs['下装'], 100 - leg_w - 5, 232, 2 * leg_w + 10, ankle - 240, 'clipBottom'))
+        else:
+            p.append(f'<rect x="{100-leg_w-5}" y="232" width="{leg_w}" height="{ankle-240}" rx="11" fill="{bottom}"/>')
+            p.append(f'<rect x="{100+5}" y="232" width="{leg_w}" height="{ankle-240}" rx="11" fill="{bottom}"/>')
 
     # 鞋
     p.append(f'<ellipse cx="{100-hp*0.4}" cy="{ankle+2}" rx="16" ry="7" fill="{shoes}"/>')
@@ -147,6 +181,7 @@ def render_avatar(profile, items, width=180, height=387):
         p.append(f'<path d="M 88 76 Q 100 90 112 76" fill="none" stroke="{accent}" stroke-width="3"/>')
         p.append(f'<circle cx="100" cy="86" r="3.5" fill="{accent}"/>')
 
+    defs_svg = ('<defs>' + ''.join(defs) + '</defs>') if defs else ''
     svg = (f'<svg viewBox="0 0 200 430" width="{width}" height="{height}" '
-           f'xmlns="http://www.w3.org/2000/svg">' + ''.join(p) + '</svg>')
+           f'xmlns="http://www.w3.org/2000/svg">' + defs_svg + ''.join(p) + '</svg>')
     return svg

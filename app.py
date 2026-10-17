@@ -3,9 +3,12 @@
 app.py — 智能穿搭色彩系统（Streamlit 前端）
 表现层 + 应用/工作流层：衣橱管理、个人档案、穿搭推荐、色彩知识。
 """
+import base64
+import io
 import uuid
 
 import streamlit as st
+from PIL import Image
 
 from i18n import t, FAMILY, TEMP, LIGHT, SAT, CATEGORY
 from data import load_data, save_data, CATEGORIES
@@ -17,6 +20,17 @@ from body_engine import body_advice, body_summary, BODY_SHAPES, SHAPE_NAME
 from avatar import render_avatar
 
 st.set_page_config(page_title='智能穿搭色彩系统', page_icon='🎨', layout='wide')
+
+
+def image_to_datauri(uploaded_file, max_w=200):
+    """把上传的图片缩放并转成 data URI（用于贴到人偶上）。"""
+    img = Image.open(uploaded_file).convert('RGB')
+    if img.width > max_w:
+        h = int(img.height * max_w / img.width)
+        img = img.resize((max_w, h))
+    buf = io.BytesIO()
+    img.save(buf, format='JPEG', quality=85)
+    return 'data:image/jpeg;base64,' + base64.b64encode(buf.getvalue()).decode()
 
 
 # ---------------------------------------------------------------------------
@@ -145,18 +159,18 @@ def page_wardrobe():
     wardrobe = data['wardrobe']
 
     with st.expander(_t('w_add_title'), expanded=True):
-        c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
+        c1, c2, c3 = st.columns([2, 1, 1])
         name = c1.text_input(_t('w_name'), placeholder=_t('w_name_ph'))
         cat = c2.selectbox(_t('w_category'), CATEGORIES,
                            format_func=lambda c: CATEGORY[c][LANG])
         color = c3.color_picker(_t('w_color'), '#9FB4C7')
-        if c4.button(_t('w_add_btn'), use_container_width=True) and name.strip():
-            wardrobe.append({
-                'id': uuid.uuid4().hex[:8],
-                'name': name.strip(),
-                'category': cat,
-                'hex': color,
-            })
+        up = st.file_uploader(_t('w_image'), type=['png', 'jpg', 'jpeg', 'webp'])
+        if st.button(_t('w_add_btn'), type='primary') and name.strip():
+            item = {'id': uuid.uuid4().hex[:8], 'name': name.strip(),
+                    'category': cat, 'hex': color}
+            if up is not None:
+                item['image'] = image_to_datauri(up)
+            wardrobe.append(item)
             save_data(data)
             st.success(name.strip())
 
@@ -168,7 +182,12 @@ def page_wardrobe():
             from color_engine import classify_color
             c = classify_color(it['hex'])
             col1, col2, col3, col4, col5 = st.columns([0.6, 1.6, 1.2, 1.6, 0.6])
-            col1.markdown(swatch(it['hex'], '34px'), unsafe_allow_html=True)
+            if it.get('image'):
+                col1.markdown(f'<img src="{it["image"]}" width="34" height="34" '
+                              f'style="border-radius:8px;object-fit:cover;border:1px solid rgba(0,0,0,.12)">',
+                              unsafe_allow_html=True)
+            else:
+                col1.markdown(swatch(it['hex'], '34px'), unsafe_allow_html=True)
             col2.write(f"**{item_name(it, LANG)}**")
             col3.write(CATEGORY[it['category']][LANG])
             col4.write(FAMILY[c['family']][LANG] + ' · ' + TEMP[c['temp']][LANG])
