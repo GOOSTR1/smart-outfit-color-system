@@ -18,6 +18,7 @@ from recommender import (
 )
 from body_engine import body_advice, body_summary, BODY_SHAPES, SHAPE_NAME
 from avatar import render_avatar
+from image_gen import build_prompt, generate_outfit_image
 
 st.set_page_config(page_title='智能穿搭色彩系统', page_icon='🎨', layout='wide')
 
@@ -355,6 +356,21 @@ def page_recommend():
             with st.expander(_t('r_reasons')):
                 for reason in r['reasons']:
                     st.markdown(f'- {reason}')
+            # AI 生图：把这套穿搭渲染成真人效果图
+            outfit_key = ('|'.join(f"{it['category']}:{it['hex']}" for it in r['items'])
+                          + '|' + conditions['weather'] + conditions['occasion'] + conditions['season'])
+            if 'ai_images' not in st.session_state:
+                st.session_state.ai_images = {}
+            if st.button(_t('r_gen_img'), key=f'genimg_{outfit_key}'):
+                with st.spinner(_t('r_gen_loading')):
+                    try:
+                        prompt = build_prompt(profile, r['items'], conditions, LANG)
+                        img_bytes, _url = generate_outfit_image(prompt)
+                        st.session_state.ai_images[outfit_key] = img_bytes
+                    except Exception as e:
+                        st.error(str(e))
+            if outfit_key in st.session_state.ai_images:
+                st.image(st.session_state.ai_images[outfit_key], width=360)
 
 
 # ---------------------------------------------------------------------------
