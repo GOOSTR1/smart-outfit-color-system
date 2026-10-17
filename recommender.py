@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from color_engine import classify_color, harmony, skin_fit
 from i18n import FAMILY
+from body_engine import calc_bmi, bmi_category
 
 
 # ---------------------------------------------------------------------------
@@ -208,6 +209,21 @@ def _avg(vals):
     return sum(vals) / len(vals) if vals else 75.0
 
 
+# ---------------------------------------------------------------------------
+# 身材适配打分（深色显瘦 / 浅色增体积）
+# ---------------------------------------------------------------------------
+
+def body_fit_score(hex_color, bmi_cat):
+    if bmi_cat in ('偏胖', '肥胖'):
+        ideal = 0.22          # 偏好深色
+    elif bmi_cat == '偏瘦':
+        ideal = 0.78          # 偏好浅色
+    else:
+        return 80.0           # 正常：无特殊偏好
+    l = classify_color(hex_color)['l']
+    return max(0.0, 100 - abs(l - ideal) / 0.35 * 100)
+
+
 def _main_color_reason(cls, lang):
     colored = [c for c in cls if c['temp'] != '中性']
     if len(colored) < 2:
@@ -265,8 +281,12 @@ def score_outfit(items, profile, conditions, lang):
     sea = _avg([fit_score(h, SEASON[conditions['season']]) for h in hexes])
     sty = _avg([fit_score(h, STYLE[profile['style']]) for h in hexes])
 
-    total = (0.30 * harmony_avg + 0.25 * skin_avg + 0.15 * occ
-             + 0.10 * wea + 0.10 * sea + 0.10 * sty)
+    # 身材适配（深色显瘦 / 浅色增体积）
+    bmi_cat = bmi_category(calc_bmi(profile.get('height', 165), profile.get('weight', 55)))
+    body_avg = _avg([body_fit_score(h, bmi_cat) for h in hexes])
+
+    total = (0.28 * harmony_avg + 0.22 * skin_avg + 0.13 * occ
+             + 0.09 * wea + 0.09 * sea + 0.10 * sty + 0.09 * body_avg)
 
     # 主色数量规则
     main_families = {c['family'] for c in cls if c['temp'] != '中性'}

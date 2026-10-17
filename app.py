@@ -13,6 +13,7 @@ from recommender import (
     recommend, option_label, item_name, WEATHER_OPTIONS, OCCASION_OPTIONS,
     SEASON_OPTIONS, STYLE_OPTIONS,
 )
+from body_engine import body_advice, body_summary, BODY_SHAPES, SHAPE_NAME
 
 st.set_page_config(page_title='智能穿搭色彩系统', page_icon='🎨', layout='wide')
 
@@ -216,11 +217,25 @@ def page_profile():
         default=profile['disliked'],
         format_func=lambda f: FAMILY[f][LANG])
 
+    st.markdown('#### ' + _t('p_body_title'))
+    c1, c2 = st.columns(2)
+    height = c1.number_input(_t('p_height'), 120, 220, int(profile.get('height', 165)), step=1)
+    weight = c2.number_input(_t('p_weight'), 30, 200, int(profile.get('weight', 55)), step=1)
+    body_shape = st.selectbox(
+        _t('p_shape'), BODY_SHAPES,
+        index=BODY_SHAPES.index(profile.get('body_shape', 'H型')),
+        format_func=lambda s: SHAPE_NAME[s][LANG])
+    st.caption(_t('p_shape_hint'))
+    st.info(body_summary({'height': height, 'weight': weight, 'body_shape': body_shape}, LANG))
+
     if st.button(_t('p_save'), type='primary'):
         profile['skin'] = skin
         profile['hair'] = hair
         profile['style'] = style
         profile['disliked'] = disliked
+        profile['height'] = height
+        profile['weight'] = weight
+        profile['body_shape'] = body_shape
         save_data(data)
         st.success(_t('p_saved'))
 
@@ -244,6 +259,11 @@ def page_recommend():
                           format_func=lambda s: option_label('season', s, LANG))
 
     conditions = {'weather': weather, 'occasion': occasion, 'season': season}
+
+    with st.expander(_t('r_body_tips'), expanded=False):
+        st.caption(body_summary(profile, LANG))
+        for tip in body_advice(profile, LANG):
+            st.markdown(f'- {tip}')
 
     if st.button(_t('r_generate'), type='primary'):
         st.session_state['gen_conditions'] = conditions

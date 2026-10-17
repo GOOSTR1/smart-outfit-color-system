@@ -40,6 +40,9 @@ DEFAULT_PROFILE = {
     'hair': '深',
     'style': '极简',
     'disliked': [],
+    'height': 165,      # cm
+    'weight': 55,       # kg
+    'body_shape': 'H型',
 }
 
 
@@ -51,8 +54,10 @@ def load_data() -> dict:
             # 补齐缺失字段
             if 'wardrobe' not in d:
                 d['wardrobe'] = DEFAULT_WARDROBE
-            if 'profile' not in d:
-                d['profile'] = DEFAULT_PROFILE
+            profile = d.get('profile') or {}
+            for k, v in DEFAULT_PROFILE.items():
+                profile.setdefault(k, v)
+            d['profile'] = profile
             return d
         except Exception:
             pass
