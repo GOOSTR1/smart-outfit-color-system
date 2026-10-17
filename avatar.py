@@ -141,13 +141,22 @@ def render_avatar(profile, items, width=180, height=387):
                         f'<rect x="{100+5}" y="232" width="{leg_w}" height="{ankle-240}" rx="11"/></clipPath>')
 
     p = []
+    # 地面阴影
+    p.append(f'<ellipse cx="100" cy="{ankle+12}" rx="50" ry="6" fill="rgba(0,0,0,0.07)"/>')
     # 脖子、头、头发
     p.append(f'<rect x="92" y="58" width="16" height="30" fill="{SKIN}"/>')
     p.append(f'<circle cx="100" cy="42" r="27" fill="{SKIN}"/>')
     p.append(f'<path d="M 71 42 A 29 29 0 0 1 129 42 Z" fill="{hair}"/>')
     if gender == '女':
-        p.append(f'<rect x="63" y="38" width="12" height="66" rx="6" fill="{hair}"/>')
-        p.append(f'<rect x="125" y="38" width="12" height="66" rx="6" fill="{hair}"/>')
+        p.append(f'<path d="M 71 42 Q 61 62 60 102 L 75 102 Q 74 60 76 44 Z" fill="{hair}"/>')
+        p.append(f'<path d="M 129 42 Q 139 62 140 102 L 125 102 Q 126 60 124 44 Z" fill="{hair}"/>')
+    # 五官
+    p.append(f'<circle cx="91" cy="47" r="2.3" fill="#3B2F2B"/>')
+    p.append(f'<circle cx="109" cy="47" r="2.3" fill="#3B2F2B"/>')
+    p.append(f'<path d="M 96 57 Q 100 60 104 57" fill="none" stroke="#C08A76" stroke-width="1.6" stroke-linecap="round"/>')
+    if gender == '女':
+        p.append(f'<circle cx="87" cy="53" r="3" fill="#F0A08A" opacity="0.5"/>')
+        p.append(f'<circle cx="113" cy="53" r="3" fill="#F0A08A" opacity="0.5"/>')
 
     # 手臂（袖子）
     p.append(f'<rect x="{100-sl-12}" y="88" width="15" height="117" rx="7" fill="{sleeve}"/>')
@@ -158,6 +167,9 @@ def render_avatar(profile, items, width=180, height=387):
         p.append(_image(imgs['上衣'], 100 - sl, 84, 2 * sl, 150, 'clipTop'))
     else:
         p.append(f'<path d="{torso_path}" fill="{top}"/>')
+
+    # 领口（V 领露肤）
+    p.append(f'<path d="M 91 84 L 100 99 L 109 84 Z" fill="{SKIN}"/>')
 
     # 手
     p.append(f'<circle cx="{100-sl-4.5}" cy="209" r="6" fill="{SKIN}"/>')
@@ -183,9 +195,11 @@ def render_avatar(profile, items, width=180, height=387):
             p.append(f'<rect x="{100-leg_w-5}" y="232" width="{leg_w}" height="{ankle-240}" rx="11" fill="{bottom}"/>')
             p.append(f'<rect x="{100+5}" y="232" width="{leg_w}" height="{ankle-240}" rx="11" fill="{bottom}"/>')
 
-    # 鞋
+    # 鞋 + 鞋底
     p.append(f'<ellipse cx="{100-hp*0.4}" cy="{ankle+2}" rx="16" ry="7" fill="{shoes}"/>')
     p.append(f'<ellipse cx="{100+hp*0.4}" cy="{ankle+2}" rx="16" ry="7" fill="{shoes}"/>')
+    p.append(f'<rect x="{100-hp*0.4-16}" y="{ankle+6}" width="32" height="3" rx="1.5" fill="rgba(0,0,0,0.18)"/>')
+    p.append(f'<rect x="{100+hp*0.4-16}" y="{ankle+6}" width="32" height="3" rx="1.5" fill="rgba(0,0,0,0.18)"/>')
 
     # 配饰（项链）
     if accent:

@@ -100,6 +100,13 @@ with st.sidebar:
     LANG = st.session_state.lang
 
     st.markdown('## 🎨 ' + _t('app_title'))
+    _g = st.radio(
+        _t('p_gender'), ['男', '女'], horizontal=True,
+        index=0 if st.session_state.data['profile'].get('gender', '女') == '男' else 1,
+        format_func=lambda v: (_t('p_gender_male') if v == '男' else _t('p_gender_female')))
+    if st.session_state.data['profile'].get('gender', '女') != _g:
+        st.session_state.data['profile']['gender'] = _g
+        save_data(st.session_state.data)
     nav = st.radio(_t('nav_label'), [
         _t('nav_home'), _t('nav_wardrobe'), _t('nav_profile'),
         _t('nav_recommend'), _t('nav_knowledge'),
@@ -158,10 +165,13 @@ def page_wardrobe():
     data = st.session_state.data
     wardrobe = data['wardrobe']
 
+    gender = data['profile'].get('gender', '女')
+    cats = [c for c in CATEGORIES if not (gender == '男' and c == '裙装')]
+
     with st.expander(_t('w_add_title'), expanded=True):
         c1, c2, c3 = st.columns([2, 1, 1])
         name = c1.text_input(_t('w_name'), placeholder=_t('w_name_ph'))
-        cat = c2.selectbox(_t('w_category'), CATEGORIES,
+        cat = c2.selectbox(_t('w_category'), cats,
                            format_func=lambda c: CATEGORY[c][LANG])
         color = c3.color_picker(_t('w_color'), '#9FB4C7')
         up = st.file_uploader(_t('w_image'), type=['png', 'jpg', 'jpeg', 'webp'])
@@ -211,11 +221,7 @@ def page_profile():
     data = st.session_state.data
     profile = data['profile']
 
-    st.markdown('#### ' + _t('p_gender'))
-    gender = st.radio(
-        _t('p_gender'), ['男', '女'],
-        index=0 if profile.get('gender', '女') == '男' else 1,
-        format_func=lambda v: (_t('p_gender_male') if v == '男' else _t('p_gender_female')))
+    gender = profile.get('gender', '女')
 
     st.markdown('#### ' + _t('p_skin'))
     skin = st.radio(
@@ -268,7 +274,6 @@ def page_profile():
     col_sum.info(body_summary(live, LANG))
 
     if st.button(_t('p_save'), type='primary'):
-        profile['gender'] = gender
         profile['skin'] = skin
         profile['hair'] = hair
         profile['style'] = style
