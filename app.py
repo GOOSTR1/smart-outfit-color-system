@@ -227,9 +227,18 @@ def page_profile():
         index=BODY_SHAPES.index(profile.get('body_shape', 'H型')),
         format_func=lambda s: SHAPE_NAME[s][LANG])
     st.caption(_t('p_shape_hint'))
+
+    st.markdown('##### ' + _t('p_measure_title'))
+    m1, m2, m3 = st.columns(3)
+    bust = m1.number_input(_t('p_bust'), 0, 160, int(profile.get('bust_cm', 0)), step=1)
+    waist_cm = m2.number_input(_t('p_waist'), 0, 160, int(profile.get('waist_cm', 0)), step=1)
+    hip_cm = m3.number_input(_t('p_hip'), 0, 160, int(profile.get('hip_cm', 0)), step=1)
+    st.caption(_t('p_measure_hint'))
+
     col_av, col_sum = st.columns([1, 2])
     live = {'height': height, 'weight': weight, 'body_shape': body_shape,
-            'hair': profile.get('hair', '深')}
+            'hair': profile.get('hair', '深'),
+            'bust_cm': bust, 'waist_cm': waist_cm, 'hip_cm': hip_cm}
     col_av.markdown(render_avatar(live, [], 160, 344), unsafe_allow_html=True)
     col_sum.info(body_summary(live, LANG))
 
@@ -241,6 +250,9 @@ def page_profile():
         profile['height'] = height
         profile['weight'] = weight
         profile['body_shape'] = body_shape
+        profile['bust_cm'] = bust
+        profile['waist_cm'] = waist_cm
+        profile['hip_cm'] = hip_cm
         save_data(data)
         st.success(_t('p_saved'))
 

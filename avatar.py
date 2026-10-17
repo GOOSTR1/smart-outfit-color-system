@@ -4,7 +4,7 @@ avatar.py — 人体模型与穿衣可视化
 根据身材（体型/BMI/身高）生成参数化的人体 SVG，并把一套穿搭的颜色
 绘制到对应部位（上装=躯干+袖子，外套=开襟，裙/裤=下半身，鞋=脚，配饰=项链）。
 """
-from body_engine import calc_bmi, bmi_category, height_category
+from body_engine import calc_bmi
 
 SKIN = '#F0C8A0'
 HAIR = {'深': '#2E2620', '浅': '#9A7B4F'}
@@ -18,24 +18,45 @@ SHAPE_W = {
     '倒三角型': {'shoulder': 49, 'bust': 42, 'waist': 36, 'hip': 37},
 }
 
-# BMI 档位 → 整体宽度缩放
-BMI_SCALE = {'偏瘦': 0.86, '正常': 1.00, '偏胖': 1.16, '肥胖': 1.32}
+# 身高体重 → 连续缩放（BMI 16→0.82，21→1.0，33→1.42；身高越高腿越长）
+def _bmi_scale(bmi):
+    if bmi is None:
+        return 1.0
+    s = 0.255 + 0.0353 * bmi
+    return max(0.75, min(1.5, s))
 
-# 身高档位 → 脚踝高度（越高腿越长）
-ANKLE = {'娇小': 348, '中等': 378, '高挑': 406}
+
+def _ankle(height_cm):
+    return max(340, min(415, 340 + (height_cm - 145) * 1.875))
 
 
 def _widths(profile):
+    h = profile.get('height', 165)
+    w = profile.get('weight', 55)
+    bust_c = profile.get('bust_cm') or 0
+    waist_c = profile.get('waist_cm') or 0
+    hip_c = profile.get('hip_cm') or 0
+    ankle = _ankle(h)
+
+    # 三围精确控制优先（周长 cm → 半宽 px，约 0.47 倍）
+    if bust_c > 0 and waist_c > 0 and hip_c > 0:
+        return {
+            'shoulder': bust_c * 0.48,
+            'bust': bust_c * 0.47,
+            'waist': waist_c * 0.47,
+            'hip': hip_c * 0.47,
+            'ankle': ankle,
+        }
+
     shape = profile.get('body_shape', 'H型')
-    bcat = bmi_category(calc_bmi(profile.get('height', 165), profile.get('weight', 55)))
-    s = BMI_SCALE.get(bcat, 1.0)
+    s = _bmi_scale(calc_bmi(h, w))
     sh = SHAPE_W.get(shape, SHAPE_W['H型'])
     return {
         'shoulder': sh['shoulder'] * s,
         'bust': sh['bust'] * s,
         'waist': sh['waist'] * s,
         'hip': sh['hip'] * s,
-        'ankle': ANKLE[height_category(profile.get('height', 165))],
+        'ankle': ankle,
     }
 
 
@@ -106,7 +127,7 @@ def render_avatar(profile, items, width=180, height=387):
     # 下半身：裙装 / 裤装
     if is_skirt:
         hem = max(hp, wst) * 1.55
-        hem_y = min(ankle - 92, 288)
+        hem_y = ankle - 92
         p.append(f'<path d="M {100-wst} 170 L {100-hem} {hem_y} L {100+hem} {hem_y} '
                  f'L {100+wst} 170 Z" fill="{bottom}"/>')
         leg_w = hp * 0.5 - 6

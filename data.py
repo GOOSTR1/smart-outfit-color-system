@@ -43,6 +43,9 @@ DEFAULT_PROFILE = {
     'height': 165,      # cm
     'weight': 55,       # kg
     'body_shape': 'H型',
+    'bust_cm': 0,       # 三围（0=未填写，用人偶体型预设）
+    'waist_cm': 0,
+    'hip_cm': 0,
 }
 
 
